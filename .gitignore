@@ -1,0 +1,11 @@
+# Notebooks checkpoints
+**.ipynb_checkpoints/
+
+# Cache
+**.cache
+
+# Data folder
+data/
+
+# config file
+src/config.py
