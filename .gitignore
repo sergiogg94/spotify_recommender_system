@@ -9,3 +9,5 @@ data/
 
 # config file
 src/config.py
+
+**__pycache__
