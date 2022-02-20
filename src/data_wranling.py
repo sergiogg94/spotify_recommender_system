@@ -38,22 +38,23 @@ def get_spotify_connection() -> spotipy.client.Spotify:
     
     return sp
 
-## get playist features to a pandas dataframe
 
-def playlist_features(playlist_id: str, sp=get_spotify_connection()):
-    '''
-    Create a pandas dataframe with the features of the trakcs extracted from a playlist.
+# get tracks features from a list of id's
+
+def tracks_features(track_list, sp=get_spotify_connection()):
+    """
+    Create a pandas dataframe with the features of the trakcs in the list.
     
     Input:
-        -playlist_id: string with the playlist id.
-        -sp: spotipy client
+        -track_list: List of tracks id's
+        -sp: spotipy client connection
         
     Output:
-        -pandas dataframe with the features of the tracks in the playlist.
-    '''
+        -pandas dataframe with the features of the tracks list.
+    """
     
-    # get playlist total len
-    playlist_len = sp.playlist_tracks(playlist_id=playlist_id, limit=1)['total']
+    # get list's len
+    playlist_len = len(track_list)
 
     # define empty lists for the features
     track_id = []
@@ -90,25 +91,26 @@ def playlist_features(playlist_id: str, sp=get_spotify_connection()):
 
     # get features in batches
     for i in range(0,playlist_len,50):
-        playlist = sp.playlist_tracks(playlist_id=playlist_id, limit=50, offset=i)
+        batch_list = track_list[i:i+50]
+        playlist = sp.tracks(tracks=batch_list)
 
-        for t in playlist['items']:
+        for t in playlist['tracks']:
             # tracks characteristics
-            track_id.append(t['track']['id'])
-            track_name.append(t['track']['name'])
-            duration_ms.append(t['track']['duration_ms'])
-            explicit.append(t['track']['explicit'])
-            track_popularity.append(t['track']['popularity'])
+            track_id.append(t['id'])
+            track_name.append(t['name'])
+            duration_ms.append(t['duration_ms'])
+            explicit.append(t['explicit'])
+            track_popularity.append(t['popularity'])
 
             # artist characteristics
-            artist_name.append(t['track']['artists'][0]['name'])
-            artist_id.append(t['track']['artists'][0]['id'])
+            artist_name.append(t['artists'][0]['name'])
+            artist_id.append(t['artists'][0]['id'])
 
             # album characteristics
-            album_name.append(t['track']['album']['name'])
-            album_id.append(t['track']['album']['id'])
-            album_type.append(t['track']['album']['type'])
-            release_date.append(t['track']['album']['release_date'])
+            album_name.append(t['album']['name'])
+            album_id.append(t['album']['id'])
+            album_type.append(t['album']['type'])
+            release_date.append(t['album']['release_date'])
 
             # get tracks features
             batch_track_features = sp.audio_features(tracks=track_id[i:])
@@ -164,6 +166,43 @@ def playlist_features(playlist_id: str, sp=get_spotify_connection()):
         'album_type': album_type,
         'release_date': release_date
     })
+    
+    # add realise year
+    df_playlist['release_year'] = df_playlist['release_date'].str[:4].astype(int)
+    
+    return df_playlist
+
+
+## get tracks' features from a playlist id
+
+def playlist_features(playlist_id: str, sp=get_spotify_connection()):
+    '''
+    Create a pandas dataframe with the features of the trakcs extracted from a playlist.
+    
+    Input:
+        -playlist_id: string with the playlist id.
+        -sp: spotipy client
+        
+    Output:
+        -pandas dataframe with the features of the tracks in the playlist.
+    '''
+    
+    # empty list for ids
+    ids_list = []
+    
+    # get playlist total len
+    playlist_len = sp.playlist_tracks(playlist_id=playlist_id, limit=1)['total']
+    
+    # get playlist items in batches
+    for i in range(0,playlist_len,50):
+        # get playlist json
+        batch_json = sp.playlist_tracks(playlist_id=playlist_id,
+                                        limit=50, offset=i)
+        # get batch id's
+        ids_list = ids_list + [item['track']['id'] for item in batch_json['items']]
+    
+    # use tracks features function
+    df_playlist = tracks_features(ids_list, sp)
     
     return df_playlist
 
